@@ -1,12 +1,11 @@
 package ges
 
 import (
-	"fmt"
 	"net/http"
 )
 
 // HandlerFunc defines the request handler used by ges
-type HandlerFunc func(http.ResponseWriter, *http.Request)
+type HandlerFunc func(*Context)
 
 // Engine 实现 serveHTTP 接口
 type Engine struct {
@@ -40,12 +39,17 @@ func (engine Engine) RUN(addr string) (err error) {
 	return http.ListenAndServe(addr, engine)
 }
 
-func (engine Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	key := req.Method + "-" + req.URL.Path
+func (engine Engine) handle(c *Context) {
+	key := c.Method + "-" + c.Path
 	if handler, ok := engine.router[key]; ok {
-		handler(w, req)
+		handler(c)
 	} else {
-		fmt.Fprintf(w, "404: %s\n", req.URL)
+		c.String(http.StatusNotFound, "404:%s\n", c.Path)
 	}
 
+}
+
+func (engine Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c := newContext(w, req)
+	engine.handle(c)
 }
